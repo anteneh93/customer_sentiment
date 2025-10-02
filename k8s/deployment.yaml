@@ -1,0 +1,167 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: feedback-producer
+  namespace: feedback-system
+  labels:
+    app: feedback-producer
+    version: v1
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: feedback-producer
+  template:
+    metadata:
+      labels:
+        app: feedback-producer
+        version: v1
+    spec:
+      serviceAccountName: feedback-producer-sa
+      containers:
+      - name: feedback-producer
+        image: gcr.io/PROJECT_ID/feedback-producer:latest
+        ports:
+        - containerPort: 8080
+          name: http
+        env:
+        - name: GOOGLE_CLOUD_PROJECT
+          valueFrom:
+            configMapKeyRef:
+              name: feedback-config
+              key: project_id
+        - name: PUBSUB_TOPIC
+          valueFrom:
+            configMapKeyRef:
+              name: feedback-config
+              key: pubsub_topic
+        - name: PORT
+          value: "8080"
+        - name: ENVIRONMENT
+          value: "production"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1000
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: feedback-consumer
+  namespace: feedback-system
+  labels:
+    app: feedback-consumer
+    version: v1
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: feedback-consumer
+  template:
+    metadata:
+      labels:
+        app: feedback-consumer
+        version: v1
+    spec:
+      serviceAccountName: feedback-consumer-sa
+      containers:
+      - name: feedback-consumer
+        image: gcr.io/PROJECT_ID/feedback-consumer:latest
+        env:
+        - name: GOOGLE_CLOUD_PROJECT
+          valueFrom:
+            configMapKeyRef:
+              name: feedback-config
+              key: project_id
+        - name: PUBSUB_SUBSCRIPTION
+          valueFrom:
+            configMapKeyRef:
+              name: feedback-config
+              key: pubsub_subscription
+        - name: SPANNER_INSTANCE_ID
+          valueFrom:
+            configMapKeyRef:
+              name: feedback-config
+              key: spanner_instance_id
+        - name: SPANNER_DATABASE_ID
+          valueFrom:
+            configMapKeyRef:
+              name: feedback-config
+              key: spanner_database_id
+        - name: BIGQUERY_DATASET_ID
+          valueFrom:
+            configMapKeyRef:
+              name: feedback-config
+              key: bigquery_dataset_id
+        - name: BIGQUERY_TABLE_ID
+          valueFrom:
+            configMapKeyRef:
+              name: feedback-config
+              key: bigquery_table_id
+        - name: VERTEXAI_LOCATION
+          valueFrom:
+            configMapKeyRef:
+              name: feedback-config
+              key: vertexai_location
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "500m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+        livenessProbe:
+          exec:
+            command:
+            - python
+            - -c
+            - "import sys; sys.exit(0)"
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+        readinessProbe:
+          exec:
+            command:
+            - python
+            - -c
+            - "import sys; sys.exit(0)"
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1000
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL

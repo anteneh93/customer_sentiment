@@ -1,0 +1,54 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: feedback-producer-service
+  namespace: feedback-system
+  labels:
+    app: feedback-producer
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 80
+    targetPort: 8080
+    protocol: TCP
+    name: http
+  selector:
+    app: feedback-producer
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: feedback-config
+  namespace: feedback-system
+data:
+  project_id: "your-gcp-project-id"
+  pubsub_topic: "customer-feedback"
+  pubsub_subscription: "customer-feedback-sub"
+  spanner_instance_id: "feedback-instance"
+  spanner_database_id: "feedback-db"
+  bigquery_dataset_id: "feedback_analysis"
+  bigquery_table_id: "feedback_analysis"
+  vertexai_location: "us-central1"
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: feedback-producer-sa
+  namespace: feedback-system
+  annotations:
+    iam.gke.io/gcp-service-account: feedback-producer@your-gcp-project-id.iam.gserviceaccount.com
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: feedback-consumer-sa
+  namespace: feedback-system
+  annotations:
+    iam.gke.io/gcp-service-account: feedback-consumer@your-gcp-project-id.iam.gserviceaccount.com
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: feedback-system
+  labels:
+    name: feedback-system
