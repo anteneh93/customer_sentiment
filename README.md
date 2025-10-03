@@ -11,10 +11,27 @@ This system processes customer feedback in real-time through the following compo
 3. **Infrastructure** - GKE cluster, Pub/Sub, Cloud Spanner, BigQuery, and Vertex AI
 4. **CI/CD** - GitHub Actions workflow for automated testing, building, and deployment
 
-## System Flow
+## System Architecture
+
 
 ```
-Customer Feedback → REST API → Pub/Sub → Consumer → Spanner (raw) + AI Analysis → BigQuery (enriched)
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   Customer      │    │   FastAPI       │    │   Pub/Sub       │
+│   Feedback      │───▶│   Producer      │───▶│   Topic         │
+│   (REST API)    │    │   (Port 8080)   │    │                 │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+                                                       │
+                                                       ▼
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   BigQuery      │◀───│   AI Consumer   │◀───│   Pub/Sub       │
+│   (Analytics)   │    │   (Vertex AI)   │    │   Subscription  │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+                                │
+                                ▼
+                       ┌─────────────────┐
+                       │   Cloud Spanner │
+                       │   (Raw Data)    │
+                       └─────────────────┘
 ```
 
 ## Features
