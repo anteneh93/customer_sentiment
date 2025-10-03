@@ -223,7 +223,6 @@ resource "google_pubsub_subscription" "customer_feedback_sub" {
 resource "google_spanner_instance" "feedback_instance" {
   config         = "regional-${var.region}"
   display_name   = "Feedback Instance"
-  num_nodes      = 1
   processing_units = 100
   
   depends_on = [google_project_service.required_apis]
@@ -240,7 +239,7 @@ resource "google_spanner_database" "feedback_database" {
     "  user_id STRING(36) NOT NULL,",
     "  timestamp STRING(50) NOT NULL,",
     "  comment STRING(MAX) NOT NULL,",
-    "  created_at STRING(50) NOT NULL,",
+    "  created_at STRING(50) NOT NULL",
     ") PRIMARY KEY (feedback_id)"
   ]
   

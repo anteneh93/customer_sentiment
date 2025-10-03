@@ -1,11 +1,25 @@
-fastapi==0.104.1
-uvicorn[standard]==0.24.0
-pydantic==2.5.0
-google-cloud-pubsub==2.18.4
-google-auth==2.23.4
-google-auth-oauthlib==1.1.0
-google-auth-httplib2==0.1.1
-pytest==7.4.3
-pytest-asyncio==0.21.1
-httpx==0.25.2
-python-multipart==0.0.6
+# Minimal requirements for maximum compatibility
+# Use these if the main requirements fail
+
+# Core web framework
+fastapi==0.95.0
+uvicorn[standard]==0.20.0
+
+# Data validation (older stable version)
+pydantic!=1.8
+
+# Google Cloud (older stable versions)
+google-cloud-pubsub==2.10.0
+google-auth==2.15.0
+google-auth-oauthlib==0.8.0
+google-auth-httplib2==0.1.0
+
+# Testing (minimal versions)
+pytest==7.2.0
+pytest-asyncio==0.19.0
+
+# HTTP client
+httpx==0.23.0
+
+# Multipart form handling
+python-multipart==0.0.4

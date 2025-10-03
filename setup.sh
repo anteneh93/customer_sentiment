@@ -130,13 +130,13 @@ run_tests() {
     # Test producer
     print_status "Testing producer..."
     cd producer
-    python -m pytest tests/ -v
+    python3 -m pytest tests/ -v
     cd ..
     
     # Test pipeline
     print_status "Testing pipeline..."
     cd pipeline
-    python -m pytest tests/ -v
+    python3 -m pytest tests/ -v
     cd ..
     
     print_success "All tests passed"

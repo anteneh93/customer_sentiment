@@ -8,6 +8,7 @@ import logging
 import os
 import signal
 import sys
+import time
 from concurrent.futures import ThreadPoolExecutor
 from typing import Dict, Any, List, Optional
 from datetime import datetime
@@ -229,8 +230,8 @@ class FeedbackProcessor:
             True if processing was successful, False otherwise
         """
         try:
-            # Parse message data
-            feedback_data = json.loads(message.data.decode('utf-8'))
+            # Parse message data - use message.message.data for the new API
+            feedback_data = json.loads(message.message.data.decode('utf-8'))
             feedback_id = feedback_data["feedback_id"]
             comment = feedback_data["comment"]
             
@@ -249,18 +250,34 @@ class FeedbackProcessor:
                 logger.error(f"Failed to store enriched feedback {feedback_id}")
                 return False
             
-            # Acknowledge message
-            message.ack()
+            # Acknowledge message - use message.ack_id for the new API
+            self.subscriber.acknowledge(
+                request={"subscription": self.subscription_path, "ack_ids": [message.ack_id]}
+            )
             logger.info(f"Successfully processed feedback {feedback_id}")
             return True
             
         except json.JSONDecodeError as e:
             logger.error(f"Failed to parse message data: {e}")
-            message.nack()
+            # Nack message - use message.ack_id for the new API
+            self.subscriber.modify_ack_deadline(
+                request={
+                    "subscription": self.subscription_path, 
+                    "ack_ids": [message.ack_id],
+                    "ack_deadline_seconds": 0
+                }
+            )
             return False
         except Exception as e:
             logger.error(f"Failed to process message: {e}")
-            message.nack()
+            # Nack message - use message.ack_id for the new API
+            self.subscriber.modify_ack_deadline(
+                request={
+                    "subscription": self.subscription_path, 
+                    "ack_ids": [message.ack_id],
+                    "ack_deadline_seconds": 0
+                }
+            )
             return False
     
     def start_consuming(self):
@@ -268,30 +285,31 @@ class FeedbackProcessor:
         logger.info(f"Starting to consume messages from {self.subscription_path}")
         
         try:
-            # Configure flow control
-            flow_control = pubsub_v1.types.FlowControl(max_messages=100)
+            logger.info("Started polling for messages...")
             
-            # Start streaming pull
-            streaming_pull_future = self.subscriber.pull(
-                request={"subscription": self.subscription_path, "max_messages": 10},
-                callback=self._process_message,
-                flow_control=flow_control
-            )
-            
-            logger.info("Started streaming pull, waiting for messages...")
-            
-            # Keep the main thread alive
-            try:
-                while not self.shutdown_requested:
-                    streaming_pull_future.result(timeout=1)
-            except KeyboardInterrupt:
-                logger.info("Received keyboard interrupt")
-            except Exception as e:
-                logger.error(f"Error in streaming pull: {e}")
-            finally:
-                streaming_pull_future.cancel()
-                streaming_pull_future.result()  # Block until the pull is terminated
-                
+            # Keep the main thread alive and poll for messages
+            while not self.shutdown_requested:
+                try:
+                    # Pull messages synchronously
+                    response = self.subscriber.pull(
+                        request={"subscription": self.subscription_path, "max_messages": 10}
+                    )
+                    
+                    if response.received_messages:
+                        logger.info(f"Received {len(response.received_messages)} messages")
+                        for message in response.received_messages:
+                            self._process_message(message)
+                    else:
+                        # No messages, sleep briefly
+                        time.sleep(1)
+                        
+                except KeyboardInterrupt:
+                    logger.info("Received keyboard interrupt")
+                    break
+                except Exception as e:
+                    logger.error(f"Error during message processing: {e}")
+                    time.sleep(5)  # Wait before retrying
+                    
         except Exception as e:
             logger.error(f"Failed to start consuming: {e}")
             raise
