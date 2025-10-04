@@ -50,6 +50,96 @@ The system uses Vertex AI Gemini to analyze feedback and extract:
 - **Sentiment**: POSITIVE, NEGATIVE, or NEUTRAL
 - **Topics**: Up to 3 from BILLING, UI_UX, PERFORMANCE, FEATURE_REQUEST
 
+### AI Interaction Documentation
+
+#### My Goal:
+Create a reliable AI-powered sentiment analysis system that can consistently extract structured data from customer feedback comments, including sentiment classification and topic categorization for business intelligence and customer experience optimization.
+
+#### My Prompt to the AI:
+```
+Analyze the following customer feedback and return a JSON response with sentiment and topics.
+
+Sentiment options: POSITIVE, NEGATIVE, NEUTRAL
+Topic options: BILLING, UI_UX, PERFORMANCE, FEATURE_REQUEST
+
+Input: {feedback_text}
+
+Output JSON format:
+{
+    "sentiment": "<POSITIVE|NEGATIVE|NEUTRAL>",
+    "topics": ["<topic1>", "<topic2>", "<topic3>"]
+}
+
+Return only the JSON response, no additional text.
+```
+
+#### AI's Raw Output:
+```
+{
+  "sentiment": "NEGATIVE",
+  "topics": ["PERFORMANCE", "BILLING"]
+}
+```
+
+#### My Refinement & Justification:
+
+**Initial Challenges:**
+- Gemini sometimes returned verbose explanations instead of pure JSON
+- Inconsistent topic categorization across similar feedback
+- Occasional hallucination of topics not in the predefined list
+
+**Refinements Made:**
+
+1. **Structured Prompt Design:**
+   - Clear, concise instructions with JSON format template
+   - Explicit sentiment and topic options listed
+   - "Return only the JSON response, no additional text" to prevent verbose responses
+   - Template-based approach using `{feedback_text}` placeholder
+
+2. **Error Handling Implementation:**
+   ```python
+   def _analyze_feedback_with_ai(self, comment: str) -> Dict[str, Any]:
+       try:
+           prompt = self.ai_prompt.format(feedback_text=comment)
+           response = self.model.generate_content(prompt)
+           response_text = response.text.strip()
+           
+           # Parse JSON response
+           ai_result = json.loads(response_text)
+           
+           # Validate sentiment
+           valid_sentiments = ["POSITIVE", "NEGATIVE", "NEUTRAL"]
+           if ai_result.get("sentiment") not in valid_sentiments:
+               logger.warning(f"Invalid sentiment: {ai_result.get('sentiment')}, defaulting to NEUTRAL")
+               ai_result["sentiment"] = "NEUTRAL"
+           
+           # Validate topics
+           valid_topics = ["BILLING", "UI_UX", "PERFORMANCE", "FEATURE_REQUEST"]
+           topics = ai_result.get("topics", [])
+           if not isinstance(topics, list):
+               topics = []
+           
+           # Filter valid topics and limit to 3
+           valid_topics_list = [t for t in topics if t in valid_topics][:3]
+           ai_result["topics"] = valid_topics_list
+           
+           return ai_result
+       except json.JSONDecodeError as e:
+           logger.error(f"Failed to parse AI response as JSON: {e}")
+           return {"sentiment": "NEUTRAL", "topics": []}
+       except Exception as e:
+           logger.error(f"AI analysis failed: {e}")
+           return {"sentiment": "NEUTRAL", "topics": []}
+   ```
+
+
+3. **Business Value:**
+   - **Consistency**: Standardized sentiment and topic extraction
+   - **Reliability**: Comprehensive error handling ensures system never fails
+   - **Scalability**: Structured output enables automated analytics
+   - **Actionability**: Predefined topics align with business processes
+   - **Observability**: Detailed logging for monitoring and debugging
+
 ### Example Analysis
 
 **Input:**
