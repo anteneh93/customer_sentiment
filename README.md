@@ -104,7 +104,19 @@ customer_sentiment/
 - `kubectl` installed
 - `terraform` installed (version >= 1.0)
 - Docker installed
-- Python 3.11+
+- Python 3.11+ (recommended) or Python 3.8-3.12
+
+### Python Compatibility
+
+**Recommended**: Python 3.11 (used in Docker containers)
+- All Docker containers use Python 3.11 for maximum compatibility
+- Avoids Python 3.13 compatibility issues with pydantic-core compilation
+- Provides stable runtime environment
+
+**Local Development**: Python 3.8-3.12
+- Python 3.13 has compatibility issues with pydantic-core compilation
+- Use Python 3.11 or 3.12 for local development
+- Docker containers bypass all Python version compatibility issues
 
 ## Quick Start
 
@@ -183,31 +195,87 @@ curl -X POST "http://<EXTERNAL-IP>/v1/feedback" \
 ```bash
 # Test producer
 cd producer
-pip install -r requirements.txt
-python -m pytest tests/ -v
+pip3 install -r requirements.txt
+python3 -m pytest tests/ -v
 
 # Test consumer
 cd ../pipeline
-pip install -r requirements.txt
-python -m pytest tests/ -v
+pip3 install -r requirements.txt
+python3 -m pytest tests/ -v
 ```
 
 ### Local Development
 
+#### Option 1: Docker (Recommended)
 ```bash
-# Run producer locally
+# Run producer with Docker
+cd producer
+docker build -t feedback-producer .
+docker run -p 8080:8080 \
+  -e GOOGLE_CLOUD_PROJECT="your-project-id" \
+  -e PUBSUB_TOPIC="customer-feedback" \
+  -v ~/.config/gcloud/application_default_credentials.json:/app/credentials.json \
+  -e GOOGLE_APPLICATION_CREDENTIALS=/app/credentials.json \
+  feedback-producer
+
+# Run consumer with Docker
+cd pipeline
+docker build -t feedback-consumer .
+docker run \
+  -e GOOGLE_CLOUD_PROJECT="your-project-id" \
+  -e PUBSUB_SUBSCRIPTION="customer-feedback-sub" \
+  -v ~/.config/gcloud/application_default_credentials.json:/app/credentials.json \
+  -e GOOGLE_APPLICATION_CREDENTIALS=/app/credentials.json \
+  feedback-consumer
+```
+
+#### Option 2: Local Python (Python 3.8-3.12)
+```bash
+# Run producer locally (requires Python 3.8-3.12)
 cd producer
 export GOOGLE_CLOUD_PROJECT="your-project-id"
 export PUBSUB_TOPIC="customer-feedback"
-python app.py
+python3 app.py
 
-# Run consumer locally
+# Run consumer locally (requires Python 3.8-3.12)
 cd pipeline
 export GOOGLE_CLOUD_PROJECT="your-project-id"
 export PUBSUB_SUBSCRIPTION="customer-feedback-sub"
 # ... other environment variables
-python consumer.py
+python3 consumer.py
 ```
+
+**Note**: Docker approach is recommended to avoid Python version compatibility issues.
+
+### Python Compatibility Solutions
+
+#### Problem: Python 3.13 Compatibility Issues
+- **pydantic-core compilation failures** due to Rust dependencies
+- **cgi module removal** in Python 3.13
+- **ForwardRef._evaluate() API changes** breaking Pydantic
+
+#### Solutions Implemented:
+
+1. **Docker Containers (Recommended)**:
+   - All containers use Python 3.11 for maximum compatibility
+   - Bypasses all Python version compatibility issues
+   - Provides consistent runtime environment
+
+2. **Version Pinning**:
+   - Updated requirements.txt with compatible package versions
+   - FastAPI 0.100.0, Pydantic 2.3.0, Google Cloud libraries 2.15.0
+   - Compatible with Python 3.8-3.12
+
+3. **Alternative Installation Methods**:
+   ```bash
+   # Use pre-compiled wheels
+   pip3 install --only-binary=all -r requirements.txt
+   
+   # Or install Rust for compilation
+   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+   source ~/.cargo/env
+   pip3 install -r requirements.txt
+   ```
 
 ## Configuration
 
@@ -274,11 +342,17 @@ All services use structured logging with appropriate log levels.
 
 ### Common Issues
 
-1. **Authentication Errors**: Ensure service accounts have proper IAM roles
-2. **Pub/Sub Issues**: Check topic and subscription exist
-3. **Spanner Errors**: Verify instance and database exist
-4. **BigQuery Issues**: Check dataset and table permissions
-5. **Vertex AI Errors**: Ensure Vertex AI API is enabled
+1. **Python 3.13 Compatibility Issues**: 
+   - **Error**: `pydantic-core` compilation failures
+   - **Solution**: Use Docker containers (Python 3.11) or downgrade to Python 3.11/3.12
+   - **Alternative**: Use `pip3 install --only-binary=all` for pre-compiled wheels
+
+2. **Authentication Errors**: Ensure service accounts have proper IAM roles
+3. **Pub/Sub Issues**: Check topic and subscription exist
+4. **Spanner Errors**: Verify instance and database exist
+5. **BigQuery Issues**: Check dataset and table permissions
+6. **Vertex AI Errors**: Ensure Vertex AI API is enabled
+7. **GCP Quota Issues**: Request quota increases for SSD, Spanner, and GKE resources
 
 ### Debugging
 

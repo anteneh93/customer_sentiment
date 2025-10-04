@@ -114,9 +114,9 @@ setup_python_env() {
     source venv/bin/activate
     
     # Install dependencies
-    pip install --upgrade pip
-    pip install -r producer/requirements.txt
-    pip install -r pipeline/requirements.txt
+    pip3 install --upgrade pip
+    pip3 install -r producer/requirements.txt
+    pip3 install -r pipeline/requirements.txt
     
     print_success "Python environment setup complete"
 }
