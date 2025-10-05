@@ -40,12 +40,12 @@ jobs:
     - name: Install dependencies
       run: |
         cd ${{ matrix.service }}
-        pip install -r requirements.txt
+        pip3 install -r requirements.txt
     
     - name: Run tests
       run: |
         cd ${{ matrix.service }}
-        python -m pytest tests/ -v --cov=. --cov-report=xml
+        python3 -m pytest tests/ -v --cov=. --cov-report=xml
     
     - name: Upload coverage to Codecov
       if: matrix.service == 'producer'
