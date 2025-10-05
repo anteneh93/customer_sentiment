@@ -33,6 +33,11 @@ class TestFeedbackProducer:
         # Set up global variables for testing
         app_module.project_id = "test-project"
         app_module.topic_name = "customer-feedback"
+        
+        # Initialize a mock publisher client for testing
+        mock_publisher = Mock()
+        mock_publisher.topic_path.return_value = "projects/test-project/topics/customer-feedback"
+        app_module.publisher_client = mock_publisher
     
     @patch('app.publisher_client')
     def test_submit_feedback_success(self, mock_publisher):
@@ -42,9 +47,6 @@ class TestFeedbackProducer:
         mock_future.result.return_value = "message-123"
         mock_publisher.publish.return_value = mock_future
         mock_publisher.topic_path.return_value = "projects/test-project/topics/customer-feedback"
-        
-        # Set the global publisher client
-        app_module.publisher_client = mock_publisher
         
         # Test the endpoint
         response = client.post("/v1/feedback", json=self.sample_feedback)
@@ -112,9 +114,6 @@ class TestFeedbackProducer:
         mock_publisher.publish.side_effect = Exception("Pub/Sub error")
         mock_publisher.topic_path.return_value = "projects/test-project/topics/customer-feedback"
         
-        # Set the global publisher client
-        app_module.publisher_client = mock_publisher
-        
         response = client.post("/v1/feedback", json=self.sample_feedback)
         
         assert response.status_code == 500
@@ -181,9 +180,6 @@ class TestFeedbackProducer:
         mock_future.result.return_value = "message-123"
         mock_publisher.publish.return_value = mock_future
         mock_publisher.topic_path.return_value = "projects/test-project/topics/customer-feedback"
-        
-        # Set the global publisher client
-        app_module.publisher_client = mock_publisher
         
         feedback_data = {
             "feedback_id": "test-fdbk-123",
