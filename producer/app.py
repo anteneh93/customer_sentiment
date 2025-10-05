@@ -37,9 +37,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Register startup event handler
-app.add_event_handler("startup", startup_event)
-
 # Pydantic models
 class FeedbackRequest(BaseModel):
     """Request model for feedback submission."""
@@ -162,6 +159,9 @@ async def get_feedback_status(feedback_id: str):
         "status": "submitted",
         "message": "Feedback processing status endpoint (to be implemented)"
     }
+
+# Register startup event handler
+app.add_event_handler("startup", startup_event)
 
 if __name__ == "__main__":
     uvicorn.run(
