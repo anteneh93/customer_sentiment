@@ -37,6 +37,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Register startup event handler
+app.add_event_handler("startup", startup_event)
+
 # Pydantic models
 class FeedbackRequest(BaseModel):
     """Request model for feedback submission."""

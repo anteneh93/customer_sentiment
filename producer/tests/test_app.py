@@ -9,6 +9,7 @@ from fastapi.testclient import TestClient
 from google.cloud.pubsub_v1 import PublisherClient
 
 from app import app
+import app as app_module
 
 # Test client
 client = TestClient(app)
@@ -28,6 +29,10 @@ class TestFeedbackProducer:
             "feedback_id": "fdbk-9a8b7c6d",
             "message": "Feedback submitted successfully"
         }
+        
+        # Set up global variables for testing
+        app_module.project_id = "test-project"
+        app_module.topic_name = "customer-feedback"
     
     @patch('app.publisher_client')
     def test_submit_feedback_success(self, mock_publisher):
@@ -37,6 +42,9 @@ class TestFeedbackProducer:
         mock_future.result.return_value = "message-123"
         mock_publisher.publish.return_value = mock_future
         mock_publisher.topic_path.return_value = "projects/test-project/topics/customer-feedback"
+        
+        # Set the global publisher client
+        app_module.publisher_client = mock_publisher
         
         # Test the endpoint
         response = client.post("/v1/feedback", json=self.sample_feedback)
@@ -104,6 +112,9 @@ class TestFeedbackProducer:
         mock_publisher.publish.side_effect = Exception("Pub/Sub error")
         mock_publisher.topic_path.return_value = "projects/test-project/topics/customer-feedback"
         
+        # Set the global publisher client
+        app_module.publisher_client = mock_publisher
+        
         response = client.post("/v1/feedback", json=self.sample_feedback)
         
         assert response.status_code == 500
@@ -170,6 +181,9 @@ class TestFeedbackProducer:
         mock_future.result.return_value = "message-123"
         mock_publisher.publish.return_value = mock_future
         mock_publisher.topic_path.return_value = "projects/test-project/topics/customer-feedback"
+        
+        # Set the global publisher client
+        app_module.publisher_client = mock_publisher
         
         feedback_data = {
             "feedback_id": "test-fdbk-123",
