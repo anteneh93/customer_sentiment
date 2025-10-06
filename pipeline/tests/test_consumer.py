@@ -44,8 +44,10 @@ class TestFeedbackProcessor:
     def create_processor_with_mocks(self):
         """Helper method to create a FeedbackProcessor with all necessary mocks."""
         with patch.object(FeedbackProcessor, '_initialize_clients'):
-            with patch.dict('os.environ', self.test_env):
-                return FeedbackProcessor()
+            with patch('consumer.vertexai.init'):
+                with patch('consumer.GenerativeModel'):
+                    with patch.dict('os.environ', self.test_env):
+                        return FeedbackProcessor()
     
     @patch('consumer.vertexai')
     @patch('consumer.pubsub_v1.SubscriberClient')
