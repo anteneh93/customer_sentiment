@@ -29,14 +29,9 @@ class TestFeedbackProcessor:
         }
         
         self.sample_message_data = json.dumps(self.sample_feedback_data).encode('utf-8')
-    
-    @patch('consumer.vertexai')
-    @patch('consumer.pubsub_v1.SubscriberClient')
-    @patch('consumer.spanner.Client')
-    @patch('consumer.bigquery.Client')
-    def test_initialization(self, mock_bigquery, mock_spanner, mock_pubsub, mock_vertexai):
-        """Test processor initialization."""
-        with patch.dict('os.environ', {
+        
+        # Set up environment variables for all tests
+        self.test_env = {
             'GOOGLE_CLOUD_PROJECT': 'test-project',
             'PUBSUB_SUBSCRIPTION': 'test-subscription',
             'SPANNER_INSTANCE_ID': 'test-instance',
@@ -44,16 +39,29 @@ class TestFeedbackProcessor:
             'BIGQUERY_DATASET_ID': 'test-dataset',
             'BIGQUERY_TABLE_ID': 'test-table',
             'VERTEXAI_LOCATION': 'us-central1'
-        }):
-            processor = FeedbackProcessor()
-            
-            assert processor.project_id == 'test-project'
-            assert processor.subscription_name == 'test-subscription'
-            assert processor.spanner_instance_id == 'test-instance'
-            assert processor.spanner_database_id == 'test-db'
-            assert processor.bigquery_dataset_id == 'test-dataset'
-            assert processor.bigquery_table_id == 'test-table'
-            assert processor.vertexai_location == 'us-central1'
+        }
+    
+    def create_processor_with_mocks(self):
+        """Helper method to create a FeedbackProcessor with all necessary mocks."""
+        with patch.object(FeedbackProcessor, '_initialize_clients'):
+            with patch.dict('os.environ', self.test_env):
+                return FeedbackProcessor()
+    
+    @patch('consumer.vertexai')
+    @patch('consumer.pubsub_v1.SubscriberClient')
+    @patch('consumer.spanner.Client')
+    @patch('consumer.bigquery.Client')
+    def test_initialization(self, mock_bigquery, mock_spanner, mock_pubsub, mock_vertexai):
+        """Test processor initialization."""
+        processor = self.create_processor_with_mocks()
+        
+        assert processor.project_id == 'test-project'
+        assert processor.subscription_name == 'test-subscription'
+        assert processor.spanner_instance_id == 'test-instance'
+        assert processor.spanner_database_id == 'test-db'
+        assert processor.bigquery_dataset_id == 'test-dataset'
+        assert processor.bigquery_table_id == 'test-table'
+        assert processor.vertexai_location == 'us-central1'
     
     @patch('consumer.vertexai')
     @patch('consumer.pubsub_v1.SubscriberClient')
@@ -68,15 +76,14 @@ class TestFeedbackProcessor:
         mock_model.generate_content.return_value = mock_response
         mock_vertexai.GenerativeModel.return_value = mock_model
         
-        with patch.dict('os.environ', {'GOOGLE_CLOUD_PROJECT': 'test-project'}):
-            processor = FeedbackProcessor()
-            processor.model = mock_model
-            
-            result = processor._analyze_feedback_with_ai("Test comment")
-            
-            assert result["sentiment"] == "NEGATIVE"
-            assert result["topics"] == ["PERFORMANCE", "UI_UX"]
-            mock_model.generate_content.assert_called_once()
+        processor = self.create_processor_with_mocks()
+        processor.model = mock_model
+        
+        result = processor._analyze_feedback_with_ai("Test comment")
+        
+        assert result["sentiment"] == "NEGATIVE"
+        assert result["topics"] == ["PERFORMANCE", "UI_UX"]
+        mock_model.generate_content.assert_called_once()
     
     @patch('consumer.vertexai')
     @patch('consumer.pubsub_v1.SubscriberClient')
@@ -91,14 +98,13 @@ class TestFeedbackProcessor:
         mock_model.generate_content.return_value = mock_response
         mock_vertexai.GenerativeModel.return_value = mock_model
         
-        with patch.dict('os.environ', {'GOOGLE_CLOUD_PROJECT': 'test-project'}):
-            processor = FeedbackProcessor()
-            processor.model = mock_model
-            
-            result = processor._analyze_feedback_with_ai("Test comment")
-            
-            assert result["sentiment"] == "NEUTRAL"  # Should default to NEUTRAL
-            assert result["topics"] == ["PERFORMANCE"]
+        processor = self.create_processor_with_mocks()
+        processor.model = mock_model
+        
+        result = processor._analyze_feedback_with_ai("Test comment")
+        
+        assert result["sentiment"] == "NEUTRAL"  # Should default to NEUTRAL
+        assert result["topics"] == ["PERFORMANCE"]
     
     @patch('consumer.vertexai')
     @patch('consumer.pubsub_v1.SubscriberClient')
@@ -113,14 +119,13 @@ class TestFeedbackProcessor:
         mock_model.generate_content.return_value = mock_response
         mock_vertexai.GenerativeModel.return_value = mock_model
         
-        with patch.dict('os.environ', {'GOOGLE_CLOUD_PROJECT': 'test-project'}):
-            processor = FeedbackProcessor()
-            processor.model = mock_model
-            
-            result = processor._analyze_feedback_with_ai("Test comment")
-            
-            assert result["sentiment"] == "NEUTRAL"
-            assert result["topics"] == []
+        processor = self.create_processor_with_mocks()
+        processor.model = mock_model
+        
+        result = processor._analyze_feedback_with_ai("Test comment")
+        
+        assert result["sentiment"] == "NEUTRAL"
+        assert result["topics"] == []
     
     @patch('consumer.vertexai')
     @patch('consumer.pubsub_v1.SubscriberClient')
@@ -133,14 +138,13 @@ class TestFeedbackProcessor:
         mock_model.generate_content.side_effect = Exception("AI service error")
         mock_vertexai.GenerativeModel.return_value = mock_model
         
-        with patch.dict('os.environ', {'GOOGLE_CLOUD_PROJECT': 'test-project'}):
-            processor = FeedbackProcessor()
-            processor.model = mock_model
-            
-            result = processor._analyze_feedback_with_ai("Test comment")
-            
-            assert result["sentiment"] == "NEUTRAL"
-            assert result["topics"] == []
+        processor = self.create_processor_with_mocks()
+        processor.model = mock_model
+        
+        result = processor._analyze_feedback_with_ai("Test comment")
+        
+        assert result["sentiment"] == "NEUTRAL"
+        assert result["topics"] == []
     
     @patch('consumer.vertexai')
     @patch('consumer.pubsub_v1.SubscriberClient')
@@ -154,14 +158,13 @@ class TestFeedbackProcessor:
         mock_spanner_client.instance.return_value.database.return_value = mock_database
         mock_spanner.Client.return_value = mock_spanner_client
         
-        with patch.dict('os.environ', {'GOOGLE_CLOUD_PROJECT': 'test-project'}):
-            processor = FeedbackProcessor()
-            processor.spanner_database = mock_database
-            
-            result = processor._store_raw_feedback(self.sample_feedback_data)
-            
-            assert result is True
-            mock_database.run_in_transaction.assert_called_once()
+        processor = self.create_processor_with_mocks()
+        processor.spanner_database = mock_database
+        
+        result = processor._store_raw_feedback(self.sample_feedback_data)
+        
+        assert result is True
+        mock_database.run_in_transaction.assert_called_once()
     
     @patch('consumer.vertexai')
     @patch('consumer.pubsub_v1.SubscriberClient')
@@ -176,13 +179,12 @@ class TestFeedbackProcessor:
         mock_spanner_client.instance.return_value.database.return_value = mock_database
         mock_spanner.Client.return_value = mock_spanner_client
         
-        with patch.dict('os.environ', {'GOOGLE_CLOUD_PROJECT': 'test-project'}):
-            processor = FeedbackProcessor()
-            processor.spanner_database = mock_database
-            
-            result = processor._store_raw_feedback(self.sample_feedback_data)
-            
-            assert result is False
+        processor = self.create_processor_with_mocks()
+        processor.spanner_database = mock_database
+        
+        result = processor._store_raw_feedback(self.sample_feedback_data)
+        
+        assert result is False
     
     @patch('consumer.vertexai')
     @patch('consumer.pubsub_v1.SubscriberClient')
@@ -195,15 +197,14 @@ class TestFeedbackProcessor:
         mock_bigquery_client.insert_rows_json.return_value = []  # No errors
         mock_bigquery.Client.return_value = mock_bigquery_client
         
-        with patch.dict('os.environ', {'GOOGLE_CLOUD_PROJECT': 'test-project'}):
-            processor = FeedbackProcessor()
-            processor.bigquery_client = mock_bigquery_client
-            processor.bigquery_table_ref = Mock()
-            
-            result = processor._store_enriched_feedback("fdbk-123", self.sample_ai_result)
-            
-            assert result is True
-            mock_bigquery_client.insert_rows_json.assert_called_once()
+        processor = self.create_processor_with_mocks()
+        processor.bigquery_client = mock_bigquery_client
+        processor.bigquery_table_ref = Mock()
+        
+        result = processor._store_enriched_feedback("fdbk-123", self.sample_ai_result)
+        
+        assert result is True
+        mock_bigquery_client.insert_rows_json.assert_called_once()
     
     @patch('consumer.vertexai')
     @patch('consumer.pubsub_v1.SubscriberClient')
@@ -216,14 +217,13 @@ class TestFeedbackProcessor:
         mock_bigquery_client.insert_rows_json.return_value = [{"error": "BigQuery error"}]
         mock_bigquery.Client.return_value = mock_bigquery_client
         
-        with patch.dict('os.environ', {'GOOGLE_CLOUD_PROJECT': 'test-project'}):
-            processor = FeedbackProcessor()
-            processor.bigquery_client = mock_bigquery_client
-            processor.bigquery_table_ref = Mock()
-            
-            result = processor._store_enriched_feedback("fdbk-123", self.sample_ai_result)
-            
-            assert result is False
+        processor = self.create_processor_with_mocks()
+        processor.bigquery_client = mock_bigquery_client
+        processor.bigquery_table_ref = Mock()
+        
+        result = processor._store_enriched_feedback("fdbk-123", self.sample_ai_result)
+        
+        assert result is False
     
     @patch('consumer.vertexai')
     @patch('consumer.pubsub_v1.SubscriberClient')
@@ -253,19 +253,18 @@ class TestFeedbackProcessor:
         mock_message.ack = Mock()
         mock_message.nack = Mock()
         
-        with patch.dict('os.environ', {'GOOGLE_CLOUD_PROJECT': 'test-project'}):
-            processor = FeedbackProcessor()
-            processor.model = mock_model
-            processor.spanner_database = mock_database
-            processor.bigquery_client = mock_bigquery_client
-            processor.bigquery_table_ref = Mock()
-            
-            result = processor._process_message(mock_message)
-            
-            assert result is True
-            mock_message.ack.assert_called_once()
-            mock_database.run_in_transaction.assert_called_once()
-            mock_bigquery_client.insert_rows_json.assert_called_once()
+        processor = self.create_processor_with_mocks()
+        processor.model = mock_model
+        processor.spanner_database = mock_database
+        processor.bigquery_client = mock_bigquery_client
+        processor.bigquery_table_ref = Mock()
+        
+        result = processor._process_message(mock_message)
+        
+        assert result is True
+        mock_message.ack.assert_called_once()
+        mock_database.run_in_transaction.assert_called_once()
+        mock_bigquery_client.insert_rows_json.assert_called_once()
     
     @patch('consumer.vertexai')
     @patch('consumer.pubsub_v1.SubscriberClient')
@@ -279,13 +278,12 @@ class TestFeedbackProcessor:
         mock_message.ack = Mock()
         mock_message.nack = Mock()
         
-        with patch.dict('os.environ', {'GOOGLE_CLOUD_PROJECT': 'test-project'}):
-            processor = FeedbackProcessor()
-            
-            result = processor._process_message(mock_message)
-            
-            assert result is False
-            mock_message.nack.assert_called_once()
+        processor = self.create_processor_with_mocks()
+        
+        result = processor._process_message(mock_message)
+        
+        assert result is False
+        mock_message.nack.assert_called_once()
     
     @patch('consumer.vertexai')
     @patch('consumer.pubsub_v1.SubscriberClient')
@@ -306,14 +304,13 @@ class TestFeedbackProcessor:
         mock_message.ack = Mock()
         mock_message.nack = Mock()
         
-        with patch.dict('os.environ', {'GOOGLE_CLOUD_PROJECT': 'test-project'}):
-            processor = FeedbackProcessor()
-            processor.spanner_database = mock_database
-            
-            result = processor._process_message(mock_message)
-            
-            assert result is False
-            mock_message.nack.assert_called_once()
+        processor = self.create_processor_with_mocks()
+        processor.spanner_database = mock_database
+        
+        result = processor._process_message(mock_message)
+        
+        assert result is False
+        mock_message.nack.assert_called_once()
     
     @patch('consumer.vertexai')
     @patch('consumer.pubsub_v1.SubscriberClient')
@@ -345,32 +342,30 @@ class TestFeedbackProcessor:
         mock_message.ack = Mock()
         mock_message.nack = Mock()
         
-        with patch.dict('os.environ', {'GOOGLE_CLOUD_PROJECT': 'test-project'}):
-            processor = FeedbackProcessor()
-            processor.model = mock_model
-            processor.spanner_database = mock_database
-            processor.bigquery_client = mock_bigquery_client
-            processor.bigquery_table_ref = Mock()
-            
-            result = processor._process_message(mock_message)
-            
-            assert result is False
-            mock_message.nack.assert_called_once()
+        processor = self.create_processor_with_mocks()
+        processor.model = mock_model
+        processor.spanner_database = mock_database
+        processor.bigquery_client = mock_bigquery_client
+        processor.bigquery_table_ref = Mock()
+        
+        result = processor._process_message(mock_message)
+        
+        assert result is False
+        mock_message.nack.assert_called_once()
     
     def test_ai_prompt_template(self):
         """Test that the AI prompt template is correctly formatted."""
-        with patch.dict('os.environ', {'GOOGLE_CLOUD_PROJECT': 'test-project'}):
-            processor = FeedbackProcessor()
-            
-            # Test prompt formatting
-            test_comment = "Test feedback comment"
-            formatted_prompt = processor.ai_prompt.format(feedback_text=test_comment)
-            
-            assert test_comment in formatted_prompt
-            assert "POSITIVE" in formatted_prompt
-            assert "NEGATIVE" in formatted_prompt
-            assert "NEUTRAL" in formatted_prompt
-            assert "BILLING" in formatted_prompt
-            assert "UI_UX" in formatted_prompt
-            assert "PERFORMANCE" in formatted_prompt
-            assert "FEATURE_REQUEST" in formatted_prompt
+        processor = self.create_processor_with_mocks()
+        
+        # Test prompt formatting
+        test_comment = "Test feedback comment"
+        formatted_prompt = processor.ai_prompt.format(feedback_text=test_comment)
+        
+        assert test_comment in formatted_prompt
+        assert "POSITIVE" in formatted_prompt
+        assert "NEGATIVE" in formatted_prompt
+        assert "NEUTRAL" in formatted_prompt
+        assert "BILLING" in formatted_prompt
+        assert "UI_UX" in formatted_prompt
+        assert "PERFORMANCE" in formatted_prompt
+        assert "FEATURE_REQUEST" in formatted_prompt
