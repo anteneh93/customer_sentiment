@@ -12,7 +12,7 @@ from uuid import uuid4
 
 from fastapi import FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, validator
 from google.cloud import pubsub_v1
 from google.cloud.pubsub_v1 import PublisherClient
 import uvicorn
@@ -44,6 +44,13 @@ class FeedbackRequest(BaseModel):
     user_id: str = Field(..., description="Unique identifier for the user")
     timestamp: str = Field(default_factory=lambda: datetime.utcnow().isoformat() + "Z")
     comment: str = Field(..., min_length=1, max_length=5000, description="Customer feedback text")
+    
+    @validator('comment')
+    def validate_comment(cls, v):
+        """Validate that comment is not empty or whitespace-only."""
+        if not v or not v.strip():
+            raise ValueError('Comment cannot be empty')
+        return v
 
 class FeedbackResponse(BaseModel):
     """Response model for feedback submission."""
