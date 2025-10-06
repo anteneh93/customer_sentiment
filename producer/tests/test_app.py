@@ -69,9 +69,9 @@ class TestFeedbackProducer:
         
         response = client.post("/v1/feedback", json=feedback_data)
         
-        assert response.status_code == 400
+        assert response.status_code == 422  # FastAPI returns 422 for Pydantic validation errors
         data = response.json()
-        assert "Comment cannot be empty" in data["detail"]
+        assert "ensure this value has at least 1 characters" in str(data["detail"])
     
     def test_submit_feedback_whitespace_comment(self):
         """Test feedback submission with whitespace-only comment."""
@@ -82,9 +82,9 @@ class TestFeedbackProducer:
         
         response = client.post("/v1/feedback", json=feedback_data)
         
-        assert response.status_code == 400
+        assert response.status_code == 422  # FastAPI returns 422 for Pydantic validation errors
         data = response.json()
-        assert "Comment cannot be empty" in data["detail"]
+        assert "Comment cannot be empty" in str(data["detail"])
     
     def test_submit_feedback_missing_user_id(self):
         """Test feedback submission without user_id."""
